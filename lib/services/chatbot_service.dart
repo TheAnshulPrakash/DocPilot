@@ -12,18 +12,22 @@ class ChatbotService {
     print('\n=== GEMINI PROMPT ===');
     print(prompt);
 
-    final url = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$apiKey');
+    final url = Uri.parse(
+        'https://generativelanguage.googleapis.com/v1beta/models/gemma-3-27b-it:generateContent?key=$apiKey'); //changing the model as Gemini-2.0-flash is discontinued
 
     try {
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          "contents": [{"parts": [{"text": prompt}]}],
-          "generationConfig": {
-            "temperature": 0.7,
-            "maxOutputTokens": 1024
-          }
+          "contents": [
+            {
+              "parts": [
+                {"text": prompt}
+              ]
+            }
+          ],
+          "generationConfig": {"temperature": 0.7, "maxOutputTokens": 1024}
         }),
       );
 
