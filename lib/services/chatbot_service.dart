@@ -6,6 +6,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 class ChatbotService {
   // Get API key from .env file
   final String apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
+  final String model;
+  ChatbotService({required this.model});
 
   // Get a response from Gemini based on a prompt
   Future<String> getGeminiResponse(String prompt) async {
@@ -13,7 +15,7 @@ class ChatbotService {
     print(prompt);
 
     final url = Uri.parse(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemma-3-27b-it:generateContent?key=$apiKey'); //changing the model as Gemini-2.0-flash is discontinued
+        'https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=$apiKey'); //changing the model as Gemini-2.0-flash is discontinued
 
     try {
       final response = await http.post(

@@ -46,13 +46,23 @@ class TranscriptionScreen extends StatefulWidget {
   State<TranscriptionScreen> createState() => _TranscriptionScreenState();
 }
 
-class _TranscriptionScreenState extends State<TranscriptionScreen> with SingleTickerProviderStateMixin {
+class _TranscriptionScreenState extends State<TranscriptionScreen>
+    with SingleTickerProviderStateMixin {
   final _audioRecorder = AudioRecorder();
   bool _isRecording = false;
   String _transcription = '';
   String _recordingPath = '';
   bool _isTranscribing = false;
   bool _isProcessing = false;
+  String selectedValue = 'gemma-3-27b-it';
+
+  final List<String> items = [
+    'gemma-3-27b-it',
+    'gemini-2.5-flash',
+    'gemma-3-12b-it',
+    'gemini-3-flash',
+    'gemini-2.0-flash'
+  ];
 
   // Data for screens
   String _formattedTranscription = '';
@@ -60,7 +70,8 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> with SingleTi
   String _prescriptionContent = '';
 
   // Chatbot service
-  final ChatbotService _chatbotService = ChatbotService();
+  ChatbotService get _chatbotService =>
+      ChatbotService(model: selectedValue); //Implemented a getter function
 
   // For waveform animation
   late AnimationController _animationController;
@@ -120,7 +131,8 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> with SingleTi
     try {
       if (await _audioRecorder.hasPermission()) {
         final directory = await getTemporaryDirectory();
-        _recordingPath = '${directory.path}/recording_${DateTime.now().millisecondsSinceEpoch}.m4a';
+        _recordingPath =
+            '${directory.path}/recording_${DateTime.now().millisecondsSinceEpoch}.m4a';
 
         await _audioRecorder.start(
           RecordConfig(
@@ -210,12 +222,14 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> with SingleTi
 
       if (response.statusCode == 200) {
         final decodedResponse = json.decode(response.body);
-        final result = decodedResponse['results']['channels'][0]['alternatives'][0]['transcript'];
+        final result = decodedResponse['results']['channels'][0]['alternatives']
+            [0]['transcript'];
 
         setState(() {
           _isTranscribing = false;
           _transcription = result.isNotEmpty ? result : 'No speech detected';
-          _formattedTranscription = _transcription; // Store raw transcription directly
+          _formattedTranscription =
+              _transcription; // Store raw transcription directly
           _isProcessing = true;
         });
 
@@ -225,7 +239,8 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> with SingleTi
         print('=============================================');
 
         // Send to Gemini for processing if we have a valid transcription
-        if (_transcription.isNotEmpty && _transcription != 'No speech detected') {
+        if (_transcription.isNotEmpty &&
+            _transcription != 'No speech detected') {
           await _processWithGemini(_transcription);
         } else {
           setState(() {
@@ -261,13 +276,11 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> with SingleTi
 
       // Prompt 2: Generate summary
       final summary = await _chatbotService.getGeminiResponse(
-          "Generate a summary of the conversation based on this transcription: $transcription"
-      );
+          "Generate a summary of the conversation based on this transcription: $transcription");
 
       // Prompt 3: Generate prescription
       final prescription = await _chatbotService.getGeminiResponse(
-          "Generate a prescription based on the conversation in this transcription: $transcription"
-      );
+          "Generate a prescription based on the conversation in this transcription: $transcription");
 
       setState(() {
         // _formattedTranscription = formattedTranscription;
@@ -277,7 +290,6 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> with SingleTi
       });
 
       print('\n============ GEMINI PROCESSING COMPLETE ============');
-
     } catch (e) {
       setState(() {
         _isProcessing = false;
@@ -310,7 +322,8 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> with SingleTi
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -324,18 +337,58 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> with SingleTi
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  _isRecording
-                      ? 'Recording your voice...'
-                      : _isTranscribing
-                      ? 'Transcribing your voice...'
-                      : _isProcessing
-                      ? 'Processing with Gemini...'
-                      : 'Tap the mic to begin',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.white70,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      _isRecording
+                          ? 'Recording your voice...'
+                          : _isTranscribing
+                              ? 'Transcribing your voice...'
+                              : _isProcessing
+                                  ? 'Processing with Gemini...'
+                                  : 'Tap the mic to begin',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.white70,
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Text(
+                          "Choose a model: ",
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                        SizedBox(
+                          width: 20,
+                        ),
+                        DropdownButton(
+                          padding: EdgeInsets.only(left: 5.0),
+                          value: selectedValue,
+                          icon: const Icon(Icons.arrow_drop_down),
+                          elevation: 16,
+                          onChanged: (String? newValue) {
+                            if (newValue != null) {
+                              setState(() {
+                                selectedValue = newValue;
+                              });
+                            }
+                          },
+                          items: items.map((String item) {
+                            return DropdownMenuItem(
+                              value: item,
+                              child: Text(
+                                item,
+                                style: TextStyle(
+                                    color: const Color.fromARGB(255, 127, 127,
+                                        127)), // Currently no theming support, hence hardcoded color
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 30),
 
@@ -351,7 +404,7 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> with SingleTi
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: List.generate(
                           _waveformValues.length,
-                              (index) {
+                          (index) {
                             final value = _waveformValues[index];
                             return AnimatedContainer(
                               duration: const Duration(milliseconds: 100),
@@ -360,11 +413,11 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> with SingleTi
                               decoration: BoxDecoration(
                                 color: _isRecording
                                     ? HSLColor.fromAHSL(
-                                    1.0,
-                                    (280 + index * 2) % 360,
-                                    0.8,
-                                    0.7 + value * 0.2
-                                ).toColor()
+                                            1.0,
+                                            (280 + index * 2) % 360,
+                                            0.8,
+                                            0.7 + value * 0.2)
+                                        .toColor()
                                     : Colors.white.withOpacity(0.5),
                                 borderRadius: BorderRadius.circular(5),
                               ),
@@ -380,7 +433,9 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> with SingleTi
                 // Microphone button
                 Center(
                   child: GestureDetector(
-                    onTap: (_isTranscribing || _isProcessing) ? null : _toggleRecording,
+                    onTap: (_isTranscribing || _isProcessing)
+                        ? null
+                        : _toggleRecording,
                     child: Container(
                       width: 100,
                       height: 100,
@@ -389,7 +444,8 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> with SingleTi
                         color: _isRecording ? Colors.red : Colors.white,
                         boxShadow: [
                           BoxShadow(
-                            color: (_isRecording ? Colors.red : Colors.white).withOpacity(0.3),
+                            color: (_isRecording ? Colors.red : Colors.white)
+                                .withOpacity(0.3),
                             spreadRadius: 8,
                             blurRadius: 20,
                           ),
@@ -400,7 +456,9 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> with SingleTi
                         child: Icon(
                           _isRecording ? Icons.stop : Icons.mic,
                           size: 50,
-                          color: _isRecording ? Colors.white : Colors.deepPurple.shade800,
+                          color: _isRecording
+                              ? Colors.white
+                              : Colors.deepPurple.shade800,
                         ),
                       ),
                     ),
@@ -423,20 +481,20 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> with SingleTi
                             color: _isRecording
                                 ? Colors.red
                                 : _isProcessing
-                                ? Colors.blue
-                                : Colors.amber,
+                                    ? Colors.blue
+                                    : Colors.amber,
                           ),
                         ),
                       Text(
                         _isRecording
                             ? 'Recording in progress'
                             : _isTranscribing
-                            ? 'Processing audio...'
-                            : _isProcessing
-                            ? 'Generating content with Gemini...'
-                            : _transcription.isEmpty
-                            ? 'Press the microphone button to start'
-                            : 'Ready to view results',
+                                ? 'Processing audio...'
+                                : _isProcessing
+                                    ? 'Generating content with Gemini...'
+                                    : _transcription.isEmpty
+                                        ? 'Press the microphone button to start'
+                                        : 'Ready to view results',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
@@ -458,10 +516,11 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> with SingleTi
                         'Transcription',
                         Icons.record_voice_over,
                         _formattedTranscription.isNotEmpty,
-                            () => Navigator.push(
+                        () => Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => TranscriptionDetailScreen(transcription: _formattedTranscription),
+                            builder: (context) => TranscriptionDetailScreen(
+                                transcription: _formattedTranscription),
                           ),
                         ),
                       ),
@@ -471,10 +530,11 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> with SingleTi
                         'Summary',
                         Icons.summarize,
                         _summaryContent.isNotEmpty,
-                            () => Navigator.push(
+                        () => Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => SummaryScreen(summary: _summaryContent),
+                            builder: (context) =>
+                                SummaryScreen(summary: _summaryContent),
                           ),
                         ),
                       ),
@@ -484,10 +544,11 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> with SingleTi
                         'Prescription',
                         Icons.medication,
                         _prescriptionContent.isNotEmpty,
-                            () => Navigator.push(
+                        () => Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => PrescriptionScreen(prescription: _prescriptionContent),
+                            builder: (context) => PrescriptionScreen(
+                                prescription: _prescriptionContent),
                           ),
                         ),
                       ),
@@ -504,12 +565,12 @@ class _TranscriptionScreenState extends State<TranscriptionScreen> with SingleTi
 
   // Helper method to build navigation buttons
   Widget _buildNavigationButton(
-      BuildContext context,
-      String title,
-      IconData icon,
-      bool isEnabled,
-      VoidCallback onPressed,
-      ) {
+    BuildContext context,
+    String title,
+    IconData icon,
+    bool isEnabled,
+    VoidCallback onPressed,
+  ) {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
